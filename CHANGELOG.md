@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scope 3 purchase-ledger example CSV for quick manual testing.
 - GitHub Actions workflow that runs the pytest suite on pushes to `main` and pull requests.
 - Git attributes file to keep text file line endings predictable across Windows and Linux CI.
+- Reviewer-facing portfolio summary in `docs/portfolio-summary.md`.
+- README badges, preview section, and reviewer start guide.
 
 ### Changed
 - Softened documentation claims in `README.md` to clarify prototype status and avoid unsupported certainty.
@@ -34,3 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tightened README language around framework alignment, factor-library completeness, and formal reporting limitations.
 - Added a faster reviewer-oriented README path with quick-start commands and example-data notes.
 - Clarified Scope 3 upload messaging so unmapped categories are not implied to be successfully mapped.
+
+### Release Checklist
+- [ ] Confirm GitHub Actions test workflow passes on `main`.
+- [ ] Confirm README preview image renders on GitHub.
+- [ ] Publish GitHub release `v0.1.0-carbonaware-mvp`.
+- [ ] Use release title `CarbonAware MVP v0.1.0`.
+- [ ] Include release notes: Initial public MVP release featuring Scope 1, Scope 2, and educational spend-based Scope 3 screening workflows.

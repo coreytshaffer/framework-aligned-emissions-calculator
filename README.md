@@ -1,6 +1,11 @@
 # Framework-Aligned Emissions Calculator (CarbonAware MVP)
 
-A lightweight, testable, local-first greenhouse gas (GHG) accounting tool built to convert facility operational activity data into estimated metric tons of carbon dioxide equivalent ($CO_2e$).
+![Tests](https://github.com/coreytshaffer/framework-aligned-emissions-calculator/actions/workflows/tests.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Status](https://img.shields.io/badge/status-MVP-green)
+
+A local-first greenhouse gas emissions calculator that turns facility activity data into transparent Scope 1, Scope 2, and educational Scope 3 screening estimates.
 
 This prototype is designed around the **Greenhouse Gas Protocol Corporate Accounting and Reporting Standard** boundary concepts, separating direct operational emissions (Scope 1), indirect purchased-energy emissions (Scope 2), and an educational spend-based Scope 3 screening workflow. It is not a compliance or certification system.
 
@@ -13,6 +18,46 @@ This prototype is designed around the **Greenhouse Gas Protocol Corporate Accoun
 ---
 
 ## 📖 Table of Contents
+1. [Preview](#-preview)
+2. [Reviewer Start Here](#-reviewer-start-here)
+3. [Core Features](#-core-features)
+4. [Accounting Framework & Methodology](#-accounting-framework--methodology)
+5. [Project Directory Architecture](#-project-directory-architecture)
+6. [Quick Start](#-quick-start)
+7. [Installation & Setup Guide](#-installation--setup-guide)
+8. [Running the Application](#-running-the-application)
+9. [Executing the Test Suite](#-executing-the-test-suite)
+10. [Example Data](#-example-data)
+11. [Operational Assumptions & Boundaries](#-operational-assumptions--boundaries)
+12. [Emission Factors Reference Guide](#-emission-factors-reference-guide)
+13. [Future Roadmap & Architectural Enhancements](#-future-roadmap--architectural-enhancements)
+
+---
+
+## 🖼️ Preview
+
+![CarbonAware MVP dashboard preview](docs/images/dashboard-preview.png)
+
+---
+
+## 🔎 Reviewer Start Here
+
+If you are reviewing this repository quickly:
+
+1. Read the mandatory disclaimer above.
+2. Review `data/emission_factors.json` and `data/scope3_supply_chain_factors.json`.
+3. Inspect `src/emissions_calculator/calculator.py` for Scope 1/2 logic.
+4. Inspect `src/emissions_calculator/scope3_calculator.py` for Scope 3 spend-based screening.
+5. Run `python -m pytest tests/ -q`.
+6. Launch the Streamlit app with `python -m streamlit run app.py`.
+7. Test `examples/sample_facility_inputs.csv`.
+8. Test `examples/sample_scope3_purchases.csv`.
+
+For a concise portfolio explanation, see `docs/portfolio-summary.md`.
+
+---
+
+## 📖 Detailed Table of Contents
 1. [Core Features](#-core-features)
 2. [Accounting Framework & Methodology](#-accounting-framework--methodology)
 3. [Project Directory Architecture](#-project-directory-architecture)
@@ -65,6 +110,10 @@ framework-aligned-emissions-calculator/
   ├── data/
   │   ├── emission_factors.json     # Local database of Scope 1/2 conversion factors and citations
   │   └── scope3_supply_chain_factors.json # Small educational subset of EPA Supply Chain v1.2 factors
+  ├── docs/
+  │   ├── portfolio-summary.md      # Reviewer-oriented project summary
+  │   └── images/
+  │       └── dashboard-preview.png # README dashboard preview image
   ├── src/
   │   └── emissions_calculator/
   │       ├── __init__.py           # Package interfaces exposure
