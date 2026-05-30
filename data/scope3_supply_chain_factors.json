@@ -1,0 +1,44 @@
+[
+  {
+    "factor_key": "laboratory_supplies",
+    "naics_code": "325413",
+    "commodity_name": "In-vitro diagnostic substance manufacturing",
+    "factor_type": "SEF+MEF",
+    "factor_value": 0.284,
+    "factor_unit": "kg CO2e / USD2021",
+    "data_year": 2019,
+    "currency_year": 2021,
+    "publication_year": 2023,
+    "model_version": "EPA Supply Chain Factors v1.2",
+    "gwp_basis": "IPCC AR4 100-year GWP",
+    "notes": "Includes upstream supply chain emissions plus standard wholesale and transport margins."
+  },
+  {
+    "factor_key": "office_supplies",
+    "naics_code": "322230",
+    "commodity_name": "Stationery product manufacturing",
+    "factor_type": "SEF+MEF",
+    "factor_value": 0.148,
+    "factor_unit": "kg CO2e / USD2021",
+    "data_year": 2019,
+    "currency_year": 2021,
+    "publication_year": 2023,
+    "model_version": "EPA Supply Chain Factors v1.2",
+    "gwp_basis": "IPCC AR4 100-year GWP",
+    "notes": "Includes upstream stationery and paper manufacturing supply chain emissions plus margin multipliers."
+  },
+  {
+    "factor_key": "software_services",
+    "naics_code": "511210",
+    "commodity_name": "Software publishers",
+    "factor_type": "SEF+MEF",
+    "factor_value": 0.056,
+    "factor_unit": "kg CO2e / USD2021",
+    "data_year": 2019,
+    "currency_year": 2021,
+    "publication_year": 2023,
+    "model_version": "EPA Supply Chain Factors v1.2",
+    "gwp_basis": "IPCC AR4 100-year GWP",
+    "notes": "Covers software publishing, SaaS procurement, and typical distribution overheads."
+  }
+]

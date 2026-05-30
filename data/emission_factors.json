@@ -1,0 +1,38 @@
+[
+  {
+    "source_name": "EPA GHG Emission Factors Hub",
+    "activity_type": "natural_gas",
+    "scope": 1,
+    "input_unit": "therms",
+    "factor_value": 0.005306,
+    "factor_unit": "metric tons CO2e / therm",
+    "gas_basis": "CO2e",
+    "source_reference": "EPA Greenhouse Gas Emissions Factors Hub (March 2023), Table 1: Stationary Combustion Factors",
+    "source_year": 2023,
+    "notes": "Approximate standard conversion factor representing CO2, CH4, and N2O emissions. Natural gas heat content assumed to be 0.1 MMBtu/therm. Original values: 53.06 kg CO2/MMBtu, 1.0 g CH4/MMBtu, 0.10 g N2O/MMBtu, converted to metric tons CO2e using standard AR5 GWPs."
+  },
+  {
+    "source_name": "EPA GHG Emission Factors Hub",
+    "activity_type": "diesel_fuel",
+    "scope": 1,
+    "input_unit": "gallons",
+    "factor_value": 0.01021,
+    "factor_unit": "metric tons CO2e / gallon",
+    "gas_basis": "CO2e",
+    "source_reference": "EPA Greenhouse Gas Emissions Factors Hub (March 2023), Table 2: Mobile Combustion Factors",
+    "source_year": 2023,
+    "notes": "Approximate standard conversion factor for distillate fuel oil No. 2 (diesel) stationary combustion. Original values: 10.21 kg CO2/gallon, 0.003 g CH4/gallon, 0.0008 g N2O/gallon, converted to metric tons CO2e using AR5 GWPs."
+  },
+  {
+    "source_name": "EPA eGRID US Average",
+    "activity_type": "electricity",
+    "scope": 2,
+    "input_unit": "kWh",
+    "factor_value": 0.000371,
+    "factor_unit": "metric tons CO2e / kWh",
+    "gas_basis": "CO2e",
+    "source_reference": "EPA eGRID national average CO2e emission factor (2023 release for year 2021 data)",
+    "source_year": 2023,
+    "notes": "Approximate national average electricity grid emission rate for the United States. Converted from original eGRID US average emission rate of 818.1 lbs CO2e/MWh to metric tons per kWh."
+  }
+]
