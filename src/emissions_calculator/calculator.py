@@ -1,4 +1,5 @@
-from typing import Dict, List
+from typing import Dict, List, Union, Optional
+from pathlib import Path
 from .models import EmissionFactor, EmissionResult, InventorySummary
 
 class UnknownActivityError(ValueError):
@@ -31,14 +32,15 @@ def calculate_emissions(activity_value: float, factor: EmissionFactor) -> float:
 def calculate_inventory(
     activity_inputs: Dict[str, float], 
     factors: Dict[str, EmissionFactor],
-    factor_file: str = "emission_factors.json"
+    factor_file: Optional[Union[str, Path, Dict[str, str]]] = None
 ) -> List[EmissionResult]:
     """Calculates the individual emissions for a dictionary of activity inputs.
 
     Args:
         activity_inputs: Dict mapping activity keys (e.g. 'natural_gas') to numerical values.
         factors: Dict mapping activity keys to EmissionFactor instances.
-        factor_file: Optional filename of the factor database used for calculations.
+        factor_file: Optional filename of the factor database used for calculations,
+                     or a mapping from activity type to filename.
 
     Returns:
         A list of EmissionResult instances representing the calculations.
@@ -46,6 +48,7 @@ def calculate_inventory(
     Raises:
         UnknownActivityError: If an activity type in the inputs is not present in factors.
         ValueError: If any input activity value is negative.
+        TypeError: If factor_file is of an unsupported type.
     """
     results: List[EmissionResult] = []
 
@@ -61,6 +64,18 @@ def calculate_inventory(
 
         factor = factors[activity_type]
         emissions = calculate_emissions(activity_value, factor)
+        
+        if factor_file is None:
+            factor_file_name = "emission_factors.json"
+        elif isinstance(factor_file, dict):
+            factor_file_name = factor_file.get(activity_type, "unknown")
+        elif isinstance(factor_file, (str, Path)):
+            factor_file_name = str(factor_file)
+        else:
+            raise TypeError(
+                f"factor_file must be None, a string, a Path, or a dictionary. "
+                f"Got unsupported type: {type(factor_file).__name__}"
+            )
 
         result = EmissionResult(
             activity_type=activity_type,
@@ -73,7 +88,7 @@ def calculate_inventory(
             source_name=factor.source_name,
             source_reference=factor.source_reference,
             factor_year=factor.source_year,
-            factor_file=factor_file
+            factor_file=factor_file_name
         )
         results.append(result)
 

@@ -1,0 +1,3 @@
+facility_name,reporting_year,natural_gas_therms,diesel_fuel_gallons,electricity_kwh,egrid_subregion
+Test Facility 1,2025,12000.5,500.0,200000.0,US
+Test Facility 2,2025,0.0,150.0,50000.0,CAMX

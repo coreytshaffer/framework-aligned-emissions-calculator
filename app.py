@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import os
 import io
+from pathlib import Path
 
 from src.emissions_calculator.models import ActivityInput
 from src.emissions_calculator.factors import load_emission_factors, FactorLoadError
@@ -11,6 +12,13 @@ from src.emissions_calculator.calculator import (
     calculate_inventory,
     summarize_by_scope,
     UnknownActivityError
+)
+from src.emissions_calculator.egrid_factors import (
+    EgridFactorLoadError,
+    build_factor_file_map,
+    load_egrid_subregion_factors,
+    normalize_egrid_subregion,
+    with_egrid_electricity_factor,
 )
 from src.emissions_calculator.scope3_factors import load_scope3_factors, Scope3FactorLoadError
 from src.emissions_calculator.scope3_calculator import calculate_scope3_inventory
@@ -164,6 +172,7 @@ st.markdown(
 
 # Load factors
 FACTORS_PATH = os.path.join(os.path.dirname(__file__), "data", "emission_factors.json")
+EGRID_FACTORS_PATH = os.path.join(os.path.dirname(__file__), "data", "egrid2023_subregion_factors.json")
 SCOPE3_FACTORS_PATH = os.path.join(os.path.dirname(__file__), "data", "scope3_supply_chain_factors.json")
 
 try:
@@ -178,12 +187,56 @@ except Scope3FactorLoadError as e:
     st.error(f"Error loading Scope 3 emission factors database: {str(e)}")
     st.stop()
 
+try:
+    egrid_factors = load_egrid_subregion_factors(EGRID_FACTORS_PATH)
+except EgridFactorLoadError as e:
+    st.error(f"Error loading eGRID subregion factors database: {str(e)}")
+    st.stop()
+
+
+def egrid_option_label(code: str) -> str:
+    """Build a compact label for the eGRID subregion select boxes."""
+    factor = egrid_factors[code]
+    display_name = factor.source_name.split(f"{code} ", 1)[-1]
+    return f"{code} - {display_name} ({factor.factor_value:.6f} MT CO2e/kWh)"
+
+
+egrid_options = sorted(egrid_factors.keys(), key=lambda code: (code != "US", code))
+egrid_label_to_code = {egrid_option_label(code): code for code in egrid_options}
+default_egrid_index = egrid_options.index("US") if "US" in egrid_options else 0
+egrid_factor_filename = os.path.basename(EGRID_FACTORS_PATH)
+
 # Sidebar - Parameters and Information
 st.sidebar.image("https://img.icons8.com/color/96/co2.png", width=70)
 st.sidebar.markdown("### **CarbonAware v1.0**")
 st.sidebar.markdown(
     "A framework-aligned emissions calculator aligned with the Greenhouse Gas (GHG) Protocol corporate standard."
 )
+st.sidebar.markdown("---")
+
+st.sidebar.subheader("⚙️ Custom Emission Factors")
+uploaded_factor_file = st.sidebar.file_uploader("Upload custom factors (CSV or JSON)", type=["csv", "json"])
+
+if uploaded_factor_file is not None:
+    import tempfile
+    ext = os.path.splitext(uploaded_factor_file.name)[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        tmp.write(uploaded_factor_file.getvalue())
+        tmp_path = tmp.name
+    try:
+        factors = load_emission_factors(tmp_path)
+        base_factor_filename = uploaded_factor_file.name
+        st.sidebar.success(f"Loaded custom factors: {base_factor_filename}")
+    except FactorLoadError as e:
+        st.sidebar.error(f"Error loading custom factors: {str(e)}")
+        base_factor_filename = os.path.basename(FACTORS_PATH)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+else:
+    base_factor_filename = os.path.basename(FACTORS_PATH)
+
+scope12_factor_file_map = build_factor_file_map(base_factor_filename, egrid_factor_filename)
+
 st.sidebar.markdown("---")
 
 st.sidebar.subheader("🌱 About Scopes")
@@ -259,6 +312,21 @@ with tab_single:
             step=1000.0,
             help="Sourced from monthly commercial electricity bills."
         )
+        selected_egrid_label = st.selectbox(
+            "Electricity eGRID subregion",
+            options=list(egrid_label_to_code.keys()),
+            index=default_egrid_index,
+            help=(
+                "Select the EPA eGRID subregion for location-based Scope 2 "
+                "electricity estimates. Use US average when the facility region is unknown."
+            ),
+        )
+        selected_egrid_code = egrid_label_to_code[selected_egrid_label]
+        selected_egrid_factor = egrid_factors[selected_egrid_code]
+        st.caption(
+            f"Using {selected_egrid_code}: {selected_egrid_factor.factor_value:.6f} "
+            "MT CO2e/kWh from EPA eGRID2023 Revision 2."
+        )
 
     # Perform calculation
     activity_dict = {
@@ -268,8 +336,14 @@ with tab_single:
     }
 
     try:
-        factor_filename = os.path.basename(FACTORS_PATH)
-        results = calculate_inventory(activity_dict, factors, factor_file=factor_filename)
+        selected_factors = with_egrid_electricity_factor(
+            factors, egrid_factors, selected_egrid_code
+        )
+        results = calculate_inventory(
+            activity_dict,
+            selected_factors,
+            factor_file=scope12_factor_file_map,
+        )
         summary = summarize_by_scope(facility_name, reporting_year, results)
         
         # Display Premium Metrics Dashboard
@@ -328,7 +402,7 @@ with tab_single:
                 })
             
             df_results = pd.DataFrame(results_data)
-            st.dataframe(df_results, use_container_width=True, hide_index=True)
+            st.dataframe(df_results, width="stretch", hide_index=True)
 
             # Export individual results to CSV
             csv_buffer = io.StringIO()
@@ -380,7 +454,7 @@ with tab_single:
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)"
                 )
-                st.plotly_chart(fig_donut, use_container_width=True)
+                st.plotly_chart(fig_donut, width="stretch")
 
                 # 2. Source breakdown bar chart
                 source_names = [r.activity_type.replace('_', ' ').title() for r in results]
@@ -403,7 +477,7 @@ with tab_single:
                     xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
                     yaxis=dict(showgrid=False)
                 )
-                st.plotly_chart(fig_bar, use_container_width=True)
+                st.plotly_chart(fig_bar, width="stretch")
             else:
                 st.info("Enter positive values above to generate interactive emissions visualizations.")
 
@@ -425,9 +499,13 @@ with tab_bulk:
         "reporting_year": [2025, 2025],
         "natural_gas_therms": [12450.5, 4820.0],
         "diesel_fuel_gallons": [1420.0, 18500.2],
-        "electricity_kwh": [245800.0, 112500.0]
+        "electricity_kwh": [245800.0, 112500.0],
+        "egrid_subregion": ["US", "CAMX"]
     })
-    st.dataframe(template_example, use_container_width=True, hide_index=True)
+    st.dataframe(template_example, width="stretch", hide_index=True)
+    st.caption(
+        "`egrid_subregion` is optional. If omitted, the default selected below is used."
+    )
     
     # Download button for actual template
     csv_template_buffer = io.StringIO()
@@ -441,6 +519,14 @@ with tab_bulk:
 
     st.markdown("---")
     st.markdown("#### **Step 2: Upload Completed Activity Data**")
+    bulk_default_egrid_label = st.selectbox(
+        "Default eGRID subregion for bulk rows",
+        options=list(egrid_label_to_code.keys()),
+        index=default_egrid_index,
+        help="Used when an uploaded CSV does not include egrid_subregion or leaves it blank.",
+        key="bulk_egrid_subregion",
+    )
+    bulk_default_egrid_code = egrid_label_to_code[bulk_default_egrid_label]
     
     uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
     
@@ -461,20 +547,48 @@ with tab_bulk:
                 processed_rows = []
                 detailed_ledger_rows = []
                 comparison_data = []
+                bulk_warnings = []
                 
-                factor_filename = os.path.basename(FACTORS_PATH)
                 for idx, row in df_upload.iterrows():
                     facility = str(row["facility_name"])
                     year = int(row["reporting_year"])
+                    raw_subregion = (
+                        row["egrid_subregion"]
+                        if "egrid_subregion" in df_upload.columns
+                        and not pd.isna(row["egrid_subregion"])
+                        else bulk_default_egrid_code
+                    )
+                    row_egrid_code = normalize_egrid_subregion(raw_subregion)
+                    if row_egrid_code not in egrid_factors:
+                        bulk_warnings.append(
+                            f"Row {idx + 1} facility '{facility}' used unknown eGRID "
+                            f"subregion '{raw_subregion}'. Falling back to {bulk_default_egrid_code}."
+                        )
+                        row_egrid_code = bulk_default_egrid_code
                     
-                    row_activities = {
-                        "natural_gas": float(row["natural_gas_therms"]) if not pd.isna(row["natural_gas_therms"]) else 0.0,
-                        "diesel_fuel": float(row["diesel_fuel_gallons"]) if not pd.isna(row["diesel_fuel_gallons"]) else 0.0,
-                        "electricity": float(row["electricity_kwh"]) if not pd.isna(row["electricity_kwh"]) else 0.0
-                    }
+                    try:
+                        row_activities = {
+                            "natural_gas": float(row["natural_gas_therms"]) if not pd.isna(row["natural_gas_therms"]) else 0.0,
+                            "diesel_fuel": float(row["diesel_fuel_gallons"]) if not pd.isna(row["diesel_fuel_gallons"]) else 0.0,
+                            "electricity": float(row["electricity_kwh"]) if not pd.isna(row["electricity_kwh"]) else 0.0
+                        }
+                    except ValueError as ve:
+                        st.error(f"❌ Row {idx + 1} for '{facility}' has invalid numeric data: {ve}")
+                        continue
                     
-                    res_list = calculate_inventory(row_activities, factors, factor_file=factor_filename)
-                    sum_res = summarize_by_scope(facility, year, res_list)
+                    try:
+                        row_factors = with_egrid_electricity_factor(
+                            factors, egrid_factors, row_egrid_code
+                        )
+                        res_list = calculate_inventory(
+                            row_activities,
+                            row_factors,
+                            factor_file=scope12_factor_file_map,
+                        )
+                        sum_res = summarize_by_scope(facility, year, res_list)
+                    except Exception as calc_err:
+                        st.error(f"❌ Row {idx + 1} for '{facility}' calculation error: {calc_err}")
+                        continue
                     
                     processed_rows.append({
                         "Facility Name": sum_res.facility_name,
@@ -482,6 +596,7 @@ with tab_bulk:
                         "Natural Gas (therms)": row_activities["natural_gas"],
                         "Diesel (gallons)": row_activities["diesel_fuel"],
                         "Electricity (kWh)": row_activities["electricity"],
+                        "eGRID Subregion": row_egrid_code,
                         "Scope 1 (MT CO₂e)": sum_res.scope_1_total,
                         "Scope 2 (MT CO₂e)": sum_res.scope_2_total,
                         "Total (MT CO₂e)": sum_res.grand_total,
@@ -496,6 +611,7 @@ with tab_bulk:
                             "reporting_year": sum_res.reporting_year,
                             "activity_type": r.activity_type,
                             "scope": r.scope,
+                            "egrid_subregion": row_egrid_code if r.activity_type == "electricity" else "",
                             "activity_value": r.activity_value,
                             "input_unit": r.input_unit,
                             "factor_value": r.factor_value,
@@ -523,7 +639,11 @@ with tab_bulk:
                 df_comparison = pd.DataFrame(comparison_data)
                 
                 st.markdown("#### **Calculated Batch Inventories**")
-                st.dataframe(df_processed, use_container_width=True, hide_index=True)
+                if bulk_warnings:
+                    st.warning("Some rows used fallback eGRID subregions.")
+                    for warning in bulk_warnings:
+                        st.write(f"- {warning}")
+                st.dataframe(df_processed, width="stretch", hide_index=True)
                 
                 # Dual download options using Streamlit grid
                 col_dl1, col_dl2 = st.columns(2)
@@ -568,7 +688,7 @@ with tab_bulk:
                     xaxis=dict(showgrid=False),
                     yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)")
                 )
-                st.plotly_chart(fig_comp, use_container_width=True)
+                st.plotly_chart(fig_comp, width="stretch")
 
         except Exception as e:
             st.error(f"❌ Failed to process uploaded CSV: {str(e)}. Please check columns and formatting.")
@@ -604,7 +724,7 @@ with tab_scope3:
         "amount_spent_usd": [2500.0, 800.0, 1200.0, 1500.0],
         "factor_key": ["laboratory_supplies", "office_supplies", "software_services", "office_furniture"]
     })
-    st.dataframe(scope3_template_df, use_container_width=True, hide_index=True)
+    st.dataframe(scope3_template_df, width="stretch", hide_index=True)
 
     # Download template button
     csv_s3_template_buffer = io.StringIO()
@@ -705,7 +825,7 @@ with tab_scope3:
                             "Factor Value (kg CO₂e/$)": f"{r.factor_value:.4f}",
                             "Model Version": r.factor_source
                         })
-                    st.dataframe(pd.DataFrame(s3_display_rows), use_container_width=True, hide_index=True)
+                    st.dataframe(pd.DataFrame(s3_display_rows), width="stretch", hide_index=True)
                     
                     # Download full ledger
                     csv_s3_ledger_buffer = io.StringIO()
@@ -759,7 +879,7 @@ with tab_scope3:
                             plot_bgcolor="rgba(0,0,0,0)",
                             xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
                         )
-                        st.plotly_chart(fig_cat, use_container_width=True)
+                        st.plotly_chart(fig_cat, width="stretch")
 
                         # Supplier chart
                         sup_names = list(s3_summary.total_by_supplier.keys())
@@ -779,7 +899,7 @@ with tab_scope3:
                             plot_bgcolor="rgba(0,0,0,0)",
                             xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
                         )
-                        st.plotly_chart(fig_sup, use_container_width=True)
+                        st.plotly_chart(fig_sup, width="stretch")
                     else:
                         st.info("Ensure positive mapped purchase spend is uploaded to generate Scope 3 charts.")
                         
@@ -829,6 +949,25 @@ with tab_factors:
                 unsafe_allow_html=True
             )
 
+    with st.expander("EPA eGRID2023 Revision 2 Subregion Electricity Factors"):
+        st.write(
+            "These factors replace the generic electricity factor when a user selects an "
+            "eGRID subregion. EPA publishes the source rates in lb CO2e/MWh; the app "
+            "converts them to metric tons CO2e/kWh for consistency with the rest of the inventory."
+        )
+        egrid_rows = []
+        for code in egrid_options:
+            fact = egrid_factors[code]
+            display_name = fact.source_name.split(f"{code} ", 1)[-1]
+            egrid_rows.append({
+                "Subregion": code,
+                "Name": display_name,
+                "Factor (MT CO2e/kWh)": round(fact.factor_value, 9),
+                "Source Year": fact.source_year,
+                "Factor File": egrid_factor_filename,
+            })
+        st.dataframe(pd.DataFrame(egrid_rows), width="stretch", hide_index=True)
+
 # ================= TAB 4: SCOPE & LIMITATIONS =================
 with tab_limitations:
     st.markdown("### **Greenhouse Gas Protocol Accounting Boundary & Limitations**")
@@ -837,7 +976,7 @@ with tab_limitations:
     st.image(
         "https://upload.wikimedia.org/wikipedia/commons/e/e6/Greenhouse_Gas_Protocol_Scopes.jpg", 
         caption="GHG Protocol standard scopes defining direct (Scope 1) and indirect (Scope 2) boundaries.",
-        use_container_width=True
+        width="stretch"
     )
     
     # 1. Mandatory Disclaimer Block (Rich Aesthetic Styling)

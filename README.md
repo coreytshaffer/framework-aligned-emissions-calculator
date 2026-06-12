@@ -45,7 +45,7 @@ This prototype is designed around the **Greenhouse Gas Protocol Corporate Accoun
 If you are reviewing this repository quickly:
 
 1. Read the mandatory disclaimer above.
-2. Review `data/emission_factors.json` and `data/scope3_supply_chain_factors.json`.
+2. Review `data/emission_factors.json`, `data/egrid2023_subregion_factors.json`, and `data/scope3_supply_chain_factors.json`.
 3. Inspect `src/emissions_calculator/calculator.py` for Scope 1/2 logic.
 4. Inspect `src/emissions_calculator/scope3_calculator.py` for Scope 3 spend-based screening.
 5. Run `python -m pytest tests/ -q`.
@@ -78,7 +78,9 @@ For a concise portfolio explanation, see `docs/portfolio-summary.md`.
 - **Glassmorphism Metrics Dashboard**: Premium, highly-responsive frontend designed with Streamlit, custom Outfit typography, dynamic card visual transitions, and metric highlights.
 - **Interactive Visualizations**: Rich, hover-responsive plotly donut and horizontal bar charts mapping scope shares and resource breakdowns.
 - **Bulk CSV Upload & Batch Processing**: Runs carbon accounting formulas instantly across multiple facilities via CSV batch uploads, compiling comparative bar charts and downloadable master inventories.
+- **eGRID Subregion Scope 2 Selection**: Replaces the generic electricity factor with EPA eGRID2023 Revision 2 subregion factors for location-based purchased-electricity estimates.
 - **Structured Data Model**: Every conversion factor is loaded from a structured JSON schema detailing year, source, and provenance metadata to support transparent calculations and clear review notes.
+- **Custom Factors Upload**: Users can override default factors by uploading their own CSV or JSON factor libraries directly in the app sidebar.
 
 ---
 
@@ -109,6 +111,7 @@ framework-aligned-emissions-calculator/
   ├── app.py                        # Streamlit dashboard and user interface
   ├── data/
   │   ├── emission_factors.json     # Local database of Scope 1/2 conversion factors and citations
+  │   ├── egrid2023_subregion_factors.json # EPA eGRID2023 Rev. 2 electricity subregion rates
   │   └── scope3_supply_chain_factors.json # Small educational subset of EPA Supply Chain v1.2 factors
   ├── docs/
   │   ├── portfolio-summary.md      # Reviewer-oriented project summary
@@ -118,6 +121,7 @@ framework-aligned-emissions-calculator/
   │   └── emissions_calculator/
   │       ├── __init__.py           # Package interfaces exposure
   │       ├── calculator.py         # Carbon math, input validation, and scope aggregations
+  │       ├── egrid_factors.py      # eGRID subregion loader and lb/MWh to MT/kWh conversion
   │       ├── models.py             # Struct data models for factors and results
   │       ├── factors.py            # JSON factor loader and validator
   │       ├── scope3_models.py      # Struct data models for Scope 3 spend-based items
@@ -222,17 +226,21 @@ Two example files are included for manual testing:
 
 | File | Purpose |
 | :--- | :--- |
-| `examples/sample_facility_inputs.csv` | Scope 1 and Scope 2 multi-facility utility/fuel upload |
+| `examples/sample_facility_inputs.csv` | Scope 1 and Scope 2 multi-facility utility/fuel upload with optional `egrid_subregion` codes |
 | `examples/sample_scope3_purchases.csv` | Scope 3 Category 1 purchase-ledger upload with one intentionally unmapped row |
+| `examples/sample_activity.csv` | General Scope 1 and 2 activity testing file with missing fields for testing |
+| `examples/sample_factors.csv` | Sample custom emission factors CSV file to test the sidebar upload functionality |
 
 The unmapped Scope 3 row is intentional. It demonstrates how the app separates mapped spend from unmapped spend instead of silently treating missing factor coverage as complete.
+
+For Scope 1/2 bulk uploads, `egrid_subregion` is optional. If a row omits the column or leaves it blank, the dashboard uses the selected default eGRID subregion for that run.
 
 ---
 
 ## 📋 Operational Assumptions & Boundaries
 
 - **Stationary Combustion**: Natural gas and diesel factors are calculated under the stationary combustion boundary. Mobile combustion parameters are ignored.
-- **Generic Grid-Average Scope 2**: Grid electricity calculations currently utilize a generic US national average factor (Location-based method) as a baseline. This is a simplified approach; true Scope 2 location-based accounting requires regional grid factors reflecting specific geographic subregions (e.g., eGRID subregions). Transitioning to dynamic, regional eGRID subregion lookup is planned as a high-priority future roadmap enhancement. **Market-based methods** (accounting for RECs, green utility purchasing contracts, or local solar attributes) are omitted.
+- **Location-Based Scope 2**: Grid electricity calculations can use EPA eGRID2023 Revision 2 subregion factors. Users must choose the relevant eGRID subregion manually or provide an `egrid_subregion` column in bulk uploads. The app does not yet infer eGRID subregions from addresses, ZIP codes, service territories, or utility accounts. **Market-based methods** (accounting for RECs, green utility purchasing contracts, or local solar attributes) are omitted.
 - **Global Warming Potentials**: Equivalence conversions utilize standard IPCC 5th Assessment Report (AR5) 100-year GWP indices ($CO_2 = 1, CH_4 = 28, N_2O = 265$).
 - **Spend-Based Scope 3 Screening**: Supply-chain calculations are designed to provide **provenance-friendly, educational screening estimates** utilizing high-level procurement registers and spend indexes. They do not represent supplier-specific primary-data accounting. Procurement amounts are multiplied by standard **SEF+MEF** (Supply Chain Emission Factor + Margins Emission Factor) values to capture complete lifecycle margins. Values utilize 2019 environmental baselines expressed in 2021 USD (model version: EPA Supply Chain Factors v1.2); inflation adjustments and direct supplier primary carbon reporting represent future roadmap items. The included Scope 3 factor file is a small demonstration subset, not the full EPA NAICS factor library.
 
@@ -240,23 +248,31 @@ The unmapped Scope 3 row is intentional. It demonstrates how the app separates m
 
 ## 📚 Emission Factors Reference Guide
 
-Active Scope 1 and Scope 2 factors are stored in `data/emission_factors.json`:
+Active Scope 1 combustion factors are stored in `data/emission_factors.json`. The original generic electricity factor remains in that file as a baseline reference, but the Streamlit Scope 2 workflow now replaces it with the selected eGRID subregion factor from `data/egrid2023_subregion_factors.json`.
 
 | Fuel/Activity Type | Boundary | Input Unit | MT $CO_2e$ / Unit | Primary Source Citation |
 | :--- | :--- | :--- | :--- | :--- |
 | **Natural Gas** | Scope 1 | therms | `0.005306` | EPA Greenhouse Gas Emissions Factors Hub (2023) |
 | **Diesel Fuel** | Scope 1 | gallons | `0.010210` | EPA Greenhouse Gas Emissions Factors Hub (2023) |
-| **Electricity** | Scope 2 | kWh | `0.000371` | EPA eGRID National Average Grid Rate (2023) |
+| **Electricity baseline reference** | Scope 2 | kWh | `0.000371` | EPA eGRID National Average Grid Rate (2023) |
+
+EPA eGRID2023 Revision 2 subregion factors are stored in `data/egrid2023_subregion_factors.json`. EPA publishes these source rates as total output `CO2e (lb/MWh)` in its [eGRID Summary Data](https://www.epa.gov/egrid/summary-data), and the app converts them to metric tons CO2e per kWh using:
+
+```text
+metric tons CO2e / kWh = lb CO2e / MWh * 0.00045359237 / 1000
+```
+
+For example, the U.S. total eGRID2023 Revision 2 value is `770.884 lb CO2e/MWh`, which converts to approximately `0.000349667 MT CO2e/kWh`.
 
 Scope 3 spend-based factors are stored separately in `data/scope3_supply_chain_factors.json`. The current project includes only a small educational subset of EPA Supply Chain GHG Emission Factors v1.2 categories for demonstration and testing. It should not be treated as a complete supply-chain factor library.
 
-The Scope 1/2 factors currently use 2023-era default values. Before formal reporting, factor versions should be reviewed against the latest available EPA GHG Emission Factors Hub and eGRID releases.
+The Scope 1/2 factors currently use 2023-era default values and eGRID2023 Revision 2 electricity rates. Before formal reporting, factor versions should be reviewed against the latest available EPA GHG Emission Factors Hub and eGRID releases.
 
 ---
 
 ## 🗺️ Future Roadmap & Architectural Enhancements
 
-- [ ] **EPA eGRID Regional Subregion Lookup**: Dynamically look up electricity emission factors based on zip codes or eGRID subregion codes rather than national averages.
+- [ ] **ZIP/Address to eGRID Helper**: Add a careful mapping workflow that helps users identify the correct eGRID subregion from ZIP codes, addresses, utility territories, or facility metadata.
 - [ ] **Market-Based Scope 2 Accounting**: Implement dual-reporting capabilities tracking both location-based grid average factors and custom supplier-specific emission rates or REC purchases.
 - [ ] **Monthly Utility Bill Integration**: Transition from annualized activity estimates to monthly tracking calendars to capture seasonality trends.
 - [ ] **Expanded Scope 3 Boundaries**: Extend beyond Category 1 purchased goods and services to employee commuting, business travel, and transportation categories.

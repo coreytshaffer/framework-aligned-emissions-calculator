@@ -175,3 +175,39 @@ def test_factor_provenance_propagation(sample_factors):
     assert elec_res.factor_file == custom_file
     assert elec_res.factor_value == 0.000371
 
+
+def test_activity_specific_factor_file_mapping(sample_factors):
+    """Verify mixed factor sources can be preserved in result provenance."""
+    file_map = {
+        "natural_gas": "emission_factors.json",
+        "diesel_fuel": "emission_factors.json",
+        "electricity": "egrid2023_subregion_factors.json",
+    }
+
+    results = calculate_inventory(
+        {"natural_gas": 100.0, "electricity": 1000.0},
+        sample_factors,
+        factor_file=file_map,
+    )
+    results_dict = {res.activity_type: res for res in results}
+
+    assert results_dict["natural_gas"].factor_file == "emission_factors.json"
+    assert results_dict["electricity"].factor_file == "egrid2023_subregion_factors.json"
+
+def test_factor_file_type_error(sample_factors):
+    """Verify that unsupported factor_file types raise a TypeError."""
+    with pytest.raises(TypeError) as exc_info:
+        calculate_inventory(
+            {"natural_gas": 100.0},
+            sample_factors,
+            factor_file=12345
+        )
+    assert "must be None, a string, a Path, or a dictionary" in str(exc_info.value)
+    
+    with pytest.raises(TypeError) as exc_info:
+        calculate_inventory(
+            {"natural_gas": 100.0},
+            sample_factors,
+            factor_file=["list", "of", "strings"]
+        )
+    assert "Got unsupported type: list" in str(exc_info.value)

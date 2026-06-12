@@ -1,0 +1,4 @@
+source_name,activity_type,scope,input_unit,factor_value,factor_unit,gas_basis,source_reference,source_year,notes
+Custom EPA 2024,natural_gas,1,therms,0.005311,metric tons CO2e / therm,CO2e,Custom Source,2024,Updated factor
+Custom EPA 2024,diesel_fuel,1,gallons,0.01025,metric tons CO2e / gallon,CO2e,Custom Source,2024,Updated factor
+Custom eGRID,electricity,2,kWh,0.000350,metric tons CO2e / kWh,CO2e,Custom eGRID,2024,Updated factor
