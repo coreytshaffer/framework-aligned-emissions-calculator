@@ -7,7 +7,7 @@ CarbonAware is a local-first greenhouse gas emissions calculator that converts f
 It currently supports:
 
 - Scope 1 stationary combustion examples: natural gas and diesel fuel.
-- Scope 2 purchased electricity using a generic national grid-average factor.
+- Scope 2 purchased electricity with optional EPA eGRID2023 subregion selection.
 - Scope 3 Category 1 purchased goods and services using an educational spend-based screening workflow.
 
 ## Why The Scope Boundaries Matter
@@ -31,7 +31,7 @@ Keeping these categories separate prevents misleading totals and makes the assum
 ## Educational Or Simplified Parts
 
 - The tool is not a certified greenhouse gas inventory system.
-- Scope 2 uses a generic electricity factor rather than regional eGRID subregions.
+- Scope 2 requires the user to choose the appropriate eGRID subregion; the app does not yet infer it from ZIP codes, addresses, utility territories, or service accounts.
 - Scope 3 uses a small educational subset of EPA supply-chain factors, not the full factor library.
 - Spend-based Scope 3 estimates are screening estimates, not supplier-specific primary-data accounting.
 - Market-based Scope 2 accounting, renewable energy certificates, and formal inventory management workflows are out of scope for this MVP.
@@ -41,7 +41,7 @@ Keeping these categories separate prevents misleading totals and makes the assum
 1. `README.md` for the project purpose, disclaimer, setup, and limitations.
 2. `src/emissions_calculator/calculator.py` for Scope 1 and Scope 2 calculation logic.
 3. `src/emissions_calculator/scope3_calculator.py` for spend-based Scope 3 logic and unmapped-spend warnings.
-4. `data/emission_factors.json` and `data/scope3_supply_chain_factors.json` for factor metadata.
+4. `data/emission_factors.json`, `data/egrid2023_subregion_factors.json`, and `data/scope3_supply_chain_factors.json` for factor metadata.
 5. `tests/` for automated verification.
 6. `examples/` for CSV input formats.
 

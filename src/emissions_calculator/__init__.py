@@ -19,6 +19,14 @@ from .calculator import (
     summarize_by_scope,
     UnknownActivityError
 )
+from .egrid_factors import (
+    EgridFactorLoadError,
+    build_factor_file_map,
+    lb_per_mwh_to_metric_tons_per_kwh,
+    load_egrid_subregion_factors,
+    normalize_egrid_subregion,
+    with_egrid_electricity_factor
+)
 
 # Isolated Scope 3 Submodules
 from .scope3_models import (
@@ -46,6 +54,12 @@ __all__ = [
     "calculate_inventory",
     "summarize_by_scope",
     "UnknownActivityError",
+    "EgridFactorLoadError",
+    "build_factor_file_map",
+    "lb_per_mwh_to_metric_tons_per_kwh",
+    "load_egrid_subregion_factors",
+    "normalize_egrid_subregion",
+    "with_egrid_electricity_factor",
     
     # Scope 3 Exports
     "Scope3EmissionFactor",

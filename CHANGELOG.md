@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- EPA eGRID2023 Revision 2 subregion factor library for location-based Scope 2 electricity calculations.
+- eGRID subregion selector in the single-facility Streamlit workflow.
+- Optional `egrid_subregion` column support for bulk Scope 1/2 facility uploads.
+- Fallback warnings when uploaded bulk rows use unknown eGRID subregion codes.
+- Unit tests covering eGRID factor loading, lb/MWh to MT/kWh conversion, selected-factor replacement, and mixed factor-file provenance.
+
+### Changed
+- Scope 2 CSV exports now preserve mixed provenance by recording eGRID electricity factors separately from the base Scope 1 factor file.
+- README and portfolio summary now describe eGRID subregion selection as implemented, while keeping ZIP/address lookup and market-based Scope 2 accounting on the roadmap.
+- Replaced deprecated Streamlit `use_container_width` calls with `width="stretch"` for current Streamlit compatibility.
+
 ## [1.0.0] - 2026-05-30
 
 ### Added
